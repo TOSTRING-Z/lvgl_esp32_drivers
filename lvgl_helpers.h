@@ -6,7 +6,8 @@
 #define LVGL_HELPERS_H
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 /*********************
@@ -33,74 +34,73 @@ extern "C" {
  * color format being used, for RGB565 each pixel needs 2 bytes.
  * When using the mono theme, the display pixels can be represented in one bit,
  * so the buffer size can be divided by 8, e.g. see SSD1306 display size. */
-#if defined (CONFIG_CUSTOM_DISPLAY_BUFFER_SIZE)
-#define DISP_BUF_SIZE   CONFIG_CUSTOM_DISPLAY_BUFFER_BYTES
+#if defined(CONFIG_CUSTOM_DISPLAY_BUFFER_SIZE)
+#define DISP_BUF_SIZE CONFIG_CUSTOM_DISPLAY_BUFFER_BYTES
 #else
-#if defined (CONFIG_LV_TFT_DISPLAY_CONTROLLER_NV6001)
-#define DISP_BUF_SIZE  (LV_HOR_RES_MAX * 40)
-#elif defined (CONFIG_LV_TFT_DISPLAY_CONTROLLER_ST7789)
-#define DISP_BUF_SIZE  (LV_HOR_RES_MAX * 40)
+#if defined(CONFIG_LV_TFT_DISPLAY_CONTROLLER_NV6001)
+#define DISP_BUF_SIZE (CONFIG_LV_HOR_RES_MAX * 20)
+#elif defined(CONFIG_LV_TFT_DISPLAY_CONTROLLER_ST7789)
+#define DISP_BUF_SIZE (CONFIG_LV_HOR_RES_MAX * 40)
 #elif defined CONFIG_LV_TFT_DISPLAY_CONTROLLER_ST7735S
-#define DISP_BUF_SIZE  (LV_HOR_RES_MAX * 40)
+#define DISP_BUF_SIZE (CONFIG_LV_HOR_RES_MAX * 40)
 #elif defined CONFIG_LV_TFT_DISPLAY_CONTROLLER_ST7796S
-#define DISP_BUF_SIZE  (LV_HOR_RES_MAX * 40)
+#define DISP_BUF_SIZE (CONFIG_LV_HOR_RES_MAX * 40)
 #elif defined CONFIG_LV_TFT_DISPLAY_CONTROLLER_HX8357
-#define DISP_BUF_SIZE  (LV_HOR_RES_MAX * 40)
+#define DISP_BUF_SIZE (CONFIG_LV_HOR_RES_MAX * 40)
 #elif defined CONFIG_LV_TFT_DISPLAY_CONTROLLER_SH1107
-#define DISP_BUF_SIZE  (LV_HOR_RES_MAX * LV_VER_RES_MAX)
+#define DISP_BUF_SIZE (CONFIG_LV_HOR_RES_MAX * CONFIG_LV_VER_RES_MAX)
 #elif defined CONFIG_LV_TFT_DISPLAY_CONTROLLER_ILI9481
-#define DISP_BUF_SIZE  (LV_HOR_RES_MAX * 40)
+#define DISP_BUF_SIZE (CONFIG_LV_HOR_RES_MAX * 40)
 #elif defined CONFIG_LV_TFT_DISPLAY_CONTROLLER_ILI9486
-#define DISP_BUF_SIZE  (LV_HOR_RES_MAX * 40)
+#define DISP_BUF_SIZE (CONFIG_LV_HOR_RES_MAX * 40)
 #elif defined CONFIG_LV_TFT_DISPLAY_CONTROLLER_ILI9488
-#define DISP_BUF_SIZE  (LV_HOR_RES_MAX * 40)
+#define DISP_BUF_SIZE (CONFIG_LV_HOR_RES_MAX * 40)
 #elif defined CONFIG_LV_TFT_DISPLAY_CONTROLLER_ILI9341
-#define DISP_BUF_SIZE  (LV_HOR_RES_MAX * 40)
+#define DISP_BUF_SIZE (CONFIG_LV_HOR_RES_MAX * 40)
 #elif defined CONFIG_LV_TFT_DISPLAY_CONTROLLER_SSD1306
-#if defined (CONFIG_LV_THEME_MONO)
-#define DISP_BUF_SIZE  (LV_HOR_RES_MAX * (LV_VER_RES_MAX / 8))
+#if defined(CONFIG_LV_THEME_MONO)
+#define DISP_BUF_SIZE (CONFIG_LV_HOR_RES_MAX * (CONFIG_LV_VER_RES_MAX / 8))
 #else
-#define DISP_BUF_SIZE  (LV_HOR_RES_MAX * LV_VER_RES_MAX)
+#define DISP_BUF_SIZE (CONFIG_LV_HOR_RES_MAX * CONFIG_LV_VER_RES_MAX)
 #endif
-#elif defined (CONFIG_LV_TFT_DISPLAY_CONTROLLER_FT81X)
-#define DISP_BUF_LINES  40
-#define DISP_BUF_SIZE  (LV_HOR_RES_MAX * DISP_BUF_LINES)
-#elif defined (CONFIG_LV_TFT_DISPLAY_CONTROLLER_IL3820)
-#define DISP_BUF_SIZE (LV_VER_RES_MAX * IL3820_COLUMNS)
+#elif defined(CONFIG_LV_TFT_DISPLAY_CONTROLLER_FT81X)
+#define DISP_BUF_LINES 40
+#define DISP_BUF_SIZE (CONFIG_LV_HOR_RES_MAX * DISP_BUF_LINES)
+#elif defined(CONFIG_LV_TFT_DISPLAY_CONTROLLER_IL3820)
+#define DISP_BUF_SIZE (CONFIG_LV_VER_RES_MAX * IL3820_COLUMNS)
 #elif defined CONFIG_LV_TFT_DISPLAY_CONTROLLER_RA8875
-#define DISP_BUF_SIZE  (LV_HOR_RES_MAX * 40)
-#elif defined (CONFIG_LV_TFT_DISPLAY_CONTROLLER_GC9A01)
-#define DISP_BUF_SIZE  (LV_HOR_RES_MAX * 40)
-#elif defined (CONFIG_LV_TFT_DISPLAY_CONTROLLER_JD79653A)
-#define DISP_BUF_SIZE ((LV_VER_RES_MAX * LV_VER_RES_MAX) / 8) // 5KB
-#elif defined (CONFIG_LV_TFT_DISPLAY_CONTROLLER_UC8151D)
-#define DISP_BUF_SIZE ((LV_VER_RES_MAX * LV_VER_RES_MAX) / 8) // 2888 bytes
+#define DISP_BUF_SIZE (CONFIG_LV_HOR_RES_MAX * 40)
+#elif defined(CONFIG_LV_TFT_DISPLAY_CONTROLLER_GC9A01)
+#define DISP_BUF_SIZE (CONFIG_LV_HOR_RES_MAX * 40)
+#elif defined(CONFIG_LV_TFT_DISPLAY_CONTROLLER_JD79653A)
+#define DISP_BUF_SIZE ((CONFIG_LV_VER_RES_MAX * CONFIG_LV_VER_RES_MAX) / 8) // 5KB
+#elif defined(CONFIG_LV_TFT_DISPLAY_CONTROLLER_UC8151D)
+#define DISP_BUF_SIZE ((CONFIG_LV_VER_RES_MAX * CONFIG_LV_VER_RES_MAX) / 8) // 2888 bytes
 #else
-#error "No display controller selected"
+#define DISP_BUF_SIZE (CONFIG_LV_HOR_RES_MAX * 40)
 #endif
 #endif
 
-/**********************
- *      TYPEDEFS
- **********************/
+    /**********************
+     *      TYPEDEFS
+     **********************/
 
-/**********************
- * GLOBAL PROTOTYPES
- **********************/
+    /**********************
+     * GLOBAL PROTOTYPES
+     **********************/
 
-/* Initialize detected SPI and I2C bus and devices */
-void lvgl_driver_init(void);
+    /* Initialize detected SPI and I2C bus and devices */
+    void lvgl_driver_init(void);
 
-/* Initialize SPI master  */
-bool lvgl_spi_driver_init(int host, int miso_pin, int mosi_pin, int sclk_pin,
-    int max_transfer_sz, int dma_channel, int quadwp_pin, int quadhd_pin);
-/* Initialize I2C master  */
-bool lvgl_i2c_driver_init(int port, int sda_pin, int scl_pin, int speed);
+    /* Initialize SPI master  */
+    bool lvgl_spi_driver_init(int host, int miso_pin, int mosi_pin, int sclk_pin,
+                              int max_transfer_sz, int dma_channel, int quadwp_pin, int quadhd_pin);
+    /* Initialize I2C master  */
+    bool lvgl_i2c_driver_init(int port, int sda_pin, int scl_pin, int speed);
 
-/**********************
- *      MACROS
- **********************/
-
+    /**********************
+     *      MACROS
+     **********************/
 
 #ifdef __cplusplus
 } /* extern "C" */

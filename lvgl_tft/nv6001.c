@@ -16,15 +16,14 @@
  *  STATIC PROTOTYPES
  **********************/
 static void nv6001_set_orientation(uint8_t orientation);
-
+void nv6001_flush_1(lv_disp_drv_t *drv, const lv_area_t *area, uint8_t *color_map);
+void set_col_page(int x1, int x2, int y1, int y2);
 /*********************
  *      DEFINES
  *********************/
 #define TAG "nv6001"
 
 spi_device_handle_t spi;
-
-SemaphoreHandle_t xMutex; // 创建互斥量
 
 // lcd操作句柄
 static esp_lcd_panel_io_handle_t lcd_io_handle = NULL;
@@ -142,85 +141,6 @@ void lcd_init(spi_device_handle_t spi)
 	nv6001_set_orientation(DISPLAY_ORIENTATION);
 }
 
-/** nv6001写入显示数据
- */
-void nv6001_flush_lines(int ypos, uint8_t *data, size_t len)
-{
-	// define an area of frame memory where MCU can access
-	if (ypos > ROW)
-	{
-		if (s_flush_done_cb)
-			s_flush_done_cb(NULL);
-		return;
-	}
-	// for (int y = ypos; y < ypos + PARALLEL_LINES - 1; y++)
-	// {
-
-	// vTaskSuspendAll();
-	esp_lcd_panel_io_tx_param(lcd_io_handle,
-							  LCD_CMD_CASET,
-							  (uint8_t[]){
-								  0,
-								  0,
-								  ((COL - 1) >> 8) & 0xFF,
-								  (COL - 1) & 0xFF,
-							  },
-							  4);
-	esp_lcd_panel_io_tx_param(lcd_io_handle,
-							  LCD_CMD_RASET,
-							  (uint8_t[]){
-								  (ypos >> 8) & 0xFF,
-								  ypos & 0xFF,
-								  ((ypos + PARALLEL_LINES - 1) >> 8) & 0xFF,
-								  (ypos + PARALLEL_LINES - 1) & 0xFF,
-							  },
-							  4);
-	esp_lcd_panel_io_tx_param(lcd_io_handle, LCD_CMD_RAMWR, NULL, 0);
-	esp_lcd_panel_io_tx_param(lcd_io_handle, LCD_CMD_RAMWR, NULL, 0);
-	// for (size_t i = 0; i < COL * 2; i += 2)
-	// {
-	// 	size_t p = i;
-	// 	uint8_t param[2] = {data[p], data[p + 1]};
-	// 	vTaskSuspendAll();
-	// 	esp_lcd_panel_io_tx_param(lcd_io_handle, -1, param, 2);
-	// 	xTaskResumeAll();
-	// }
-	esp_lcd_panel_io_tx_param(lcd_io_handle, -1, data, len);
-	// }
-	// xTaskResumeAll();
-	return;
-}
-
-void write_line(int ypos, uint16_t color)
-{
-	// 计算数组的大小
-	size_t array_size = COL * PARALLEL_LINES * sizeof(uint16_t);
-
-	// 动态分配 uint8_t 数组
-	uint8_t *data = (uint8_t *)malloc(array_size);
-
-	// 填充 data 数组
-	for (size_t i = 0; i < array_size; i += 2)
-	{
-		data[i] = (uint8_t)(color >> 8);	   // 高位字节
-		data[i + 1] = (uint8_t)(color & 0xFF); // 低位字节
-	}
-
-	nv6001_flush_lines(ypos, data, array_size);
-
-	// 释放内存
-	free(data);
-}
-
-// 填充屏幕颜色
-void display_color(uint16_t color)
-{
-	for (size_t ypos = 0; ypos < COL * 2; ypos += PARALLEL_LINES)
-	{
-		write_line(ypos, color);
-	}
-}
-
 static bool notify_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata, void *user_ctx)
 {
 	if (s_flush_done_cb)
@@ -270,38 +190,7 @@ void nv6001_init()
 	// Initialize the LCD
 	lcd_init(spi);
 
-	display_color(0xFFFF);
-
 	ESP_LOGI(TAG, "NV6001 initialization.\n");
-}
-
-void write_line_map(int ypos, size_t x1, size_t x2, uint8_t *color_map)
-{
-	// 尝试获取互斥量
-	// xMutex = xSemaphoreCreateMutex(); // 创建互斥量
-	// if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE)
-	// {
-	size_t array_size = COL * sizeof(uint16_t);
-	uint8_t *data = (uint8_t *)malloc(array_size);
-	memset(data, 0xFF, array_size);
-	memset(data, 0x30, COL);
-	// 进入临界区
-	for (size_t x = 0; x < COL; x++)
-	{
-		if (x >= x1 && x <= x2)
-		{
-			uint16_t color = color_map[1] << 8 | color_map[0];
-			// ESP_LOGI(TAG, "write_line_map color_map: %d", color);
-			data[x * 2] = color >> 8;
-			data[x * 2 + 1] = color;
-			color_map += 2;
-		}
-	}
-	nv6001_flush_lines(ypos, data, array_size);
-	free(data);
-	// 退出临界区
-	// 	xSemaphoreGive(xMutex);
-	// }
 }
 
 static void nv6001_set_orientation(uint8_t orientation)
@@ -321,62 +210,104 @@ static void nv6001_set_orientation(uint8_t orientation)
 	esp_lcd_panel_io_tx_param(lcd_io_handle, 0x36, (void *)&data[orientation], 1);
 }
 
-uint8_t *rev_color_map(uint8_t *color_map, size_t size){
+uint8_t *rev_color_map(uint8_t *color_map, size_t size)
+{
 	// 高低取反
 	uint8_t *data = (uint8_t *)malloc(size * 2);
-	
-	for (size_t x = 0; x < size * 2; x+=2)
+
+	for (size_t x = 0; x < size * 2; x += 2)
 	{
-			data[x] = color_map[x + 1];
-			data[x + 1] = color_map[x];
+		data[x] = color_map[x + 1];
+		data[x + 1] = color_map[x];
 	}
+	free(data);
 	return data;
 }
 
-void nv6001_flush(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_map)
+void set_col_page(int x1, int x2, int y1, int y2)
 {
-	uint8_t data[4];
-
-	/*Column addresses*/
-	data[0] = (area->x1 >> 8) & 0xFF;
-	data[1] = area->x1 & 0xFF;
-	data[2] = (area->x2 >> 8) & 0xFF;
-	data[3] = area->x2 & 0xFF;
-	esp_lcd_panel_io_tx_param(lcd_io_handle, LCD_CMD_CASET, (void *)data, 4);
-
-	/*Page addresses*/
-	data[0] = (area->y1 >> 8) & 0xFF;
-	data[1] = area->y1 & 0xFF;
-	data[2] = (area->y2 >> 8) & 0xFF;
-	data[3] = area->y2 & 0xFF;
-	esp_lcd_panel_io_tx_param(lcd_io_handle, LCD_CMD_RASET, (void *)data, 4);
-
-	/*Memory write*/
+	// CASET (2Ah): Column Address Set
+	// The SC[15:0] and EC[15:0]-SC[15:0]+1 must be divisible by 4.
+	// If transferred image size is bigger than setting window size, abnormal display is occurred.
+	esp_lcd_panel_io_tx_param(lcd_io_handle,
+							  LCD_CMD_CASET,
+							  (uint8_t[]){
+								  (y1 >> 8) & 0xFF,
+								  y1 & 0xFF,
+								  (y2 >> 8) & 0xFF,
+								  y2 & 0xFF,
+							  },
+							  4);
+	// PASET (2Bh):Page Address Set
+	// If SP[15:0] or EP[15:0] is greater than the available frame memory, then the parameter is not updated.
+	esp_lcd_panel_io_tx_param(lcd_io_handle,
+							  LCD_CMD_RASET,
+							  (uint8_t[]){
+								  (x1 >> 8) & 0xFF,
+								  x1 & 0xFF,
+								  (x2 >> 8) & 0xFF,
+								  x2 & 0xFF,
+							  },
+							  4);
 	esp_lcd_panel_io_tx_param(lcd_io_handle, LCD_CMD_RAMWR, NULL, 0);
 	esp_lcd_panel_io_tx_param(lcd_io_handle, LCD_CMD_RAMWR, NULL, 0);
-
-	uint32_t size = lv_area_get_width(area) * lv_area_get_height(area);
-	uint8_t *color_rev = rev_color_map(color_map,size);
-	esp_lcd_panel_io_tx_param(lcd_io_handle, -1, (void *)color_rev , size * 2);
-	lv_disp_flush_ready(drv);
 }
 
-// 刷新显示缓冲区的回调函数
-void nv6001_flush_1(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_map)
+void nv6001_flush(lv_disp_drv_t *drv, const lv_area_t *area, uint8_t *color_map)
 {
-	ESP_LOGI(TAG, "nv6001_lv_fb_flush");
-	ESP_LOGI(TAG, "Display y: %d, %d", area->y1, area->y2);
-	ESP_LOGI(TAG, "Display x: %d, %d", area->x1, area->x2);
-	int x1 = area->x1;
-	int x2 = area->x2;
-	int y1 = area->y1;
-	int y2 = area->y2;
-
-	if (y2 > y1 && x2 > x1)
+	uint16_t x1 = area->y1;
+	uint16_t x2 = area->y2;
+	uint16_t y1 = area->x1;
+	uint16_t y2 = area->x2;
+	int flag = 0;
+	if (y1 % 4 == 0 && (y2 - y1 + 1) % 4 == 0)
 	{
-		for (int ypos = y1; ypos <= y2; ypos += 1)
-			write_line_map(ypos, x1, x2, color_map);
+		flag = 1;
+		// ESP_LOGI(TAG, "batch write bit.");
 	}
 
+	uint32_t y_array_size;
+	uint32_t array_size;
+	uint8_t *data;
+	if (flag == 1)
+	{
+		set_col_page(x1, x2, y1, y2);
+		y_array_size = (y2 - y1 + 1) * 2;
+		array_size = (y2 - y1 + 1) * (x2 - x1 + 1) * 2;
+		data = (uint8_t *)malloc(array_size);
+	}
+	else
+	{
+		y_array_size = (y2 - y1 + 1) * 2;
+		data = (uint8_t *)malloc(y_array_size);
+	}
+	for (size_t xpos = x1; xpos < x2 + 1; xpos++)
+	{
+		// memset(data, 0xFF,array_size);
+		for (size_t i = 0; i < y_array_size; i += 2)
+		{
+			if (flag == 1)
+			{
+				data[(xpos - x1) * y_array_size + i] = color_map[(xpos - x1) * y_array_size + i + 1];
+				data[(xpos - x1) * y_array_size + i + 1] = color_map[(xpos - x1) * y_array_size + i];
+			}
+			else
+			{
+				data[i] = color_map[(xpos - x1) * y_array_size + i + 1];
+				data[i + 1] = color_map[(xpos - x1) * y_array_size + i];
+			}
+		}
+		if (flag == 0)
+		{
+			set_col_page(xpos, xpos, y1, y2);
+			esp_lcd_panel_io_tx_param(lcd_io_handle, -1, data, y_array_size);
+		}
+	}
+	if (flag == 1)
+	{
+		esp_lcd_panel_io_tx_param(lcd_io_handle, -1, data, array_size);
+	}
+	// 必要，否则内存溢出报错
+	free(data);
 	lv_disp_flush_ready(drv);
 }

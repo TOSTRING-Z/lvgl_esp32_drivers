@@ -1,2 +1,15 @@
 rsource "lvgl_tft/Kconfig"
 rsource "lvgl_touch/Kconfig"
+menu "LVGL TFT Display Size"
+    config LV_HOR_RES_MAX
+        int "Screen Width (px)"
+        default 240
+        help
+            Screen Width.
+
+    config LV_VER_RES_MAX
+        int "Screen Height (px)"
+        default 120
+        help
+            Screen Height.
+endmenu
